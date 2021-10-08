@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{508888A4-43EE-A2F0-4CDD-EBBAF9333E02}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "ThreadTest",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
