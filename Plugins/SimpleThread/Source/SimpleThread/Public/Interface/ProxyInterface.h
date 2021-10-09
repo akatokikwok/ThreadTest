@@ -11,7 +11,7 @@ class SIMPLETHREAD_API IThreadProxy : public TSharedFromThis<IThreadProxy>
 {
 public:
 	IThreadProxy();
-	~IThreadProxy();
+	virtual ~IThreadProxy();
 	virtual void SuspendThread() = 0;// 一个是挂起
 	virtual void WakeupThread() = 0;// 一个是唤醒
 

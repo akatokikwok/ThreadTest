@@ -1,10 +1,10 @@
-#include "ThreadManager.h"
+ï»¿#include "ThreadManager.h"
 
 TSharedPtr<FThreadManagement> FThreadManagement::ThreadManagement = nullptr;
 
 TSharedRef<FThreadManagement> FThreadManagement::Get()
 {
-	if (ThreadManagement.IsValid()) {// Èç¹ûÖÇÄÜÖ¸ÕëÎª¿Õ,¾Í¸øËû´´½¨1¸ö
+	if (ThreadManagement.IsValid()) {// å¦‚æœæ™ºèƒ½æŒ‡é’ˆä¸ºç©º,å°±ç»™ä»–åˆ›å»º1ä¸ª
 		ThreadManagement = MakeShareable(new FThreadManagement());
 	}
 	return ThreadManagement.ToSharedRef();
@@ -19,19 +19,19 @@ void FThreadManagement::Destroy()
 
 FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLambda)
 {
-	// ´´½¨Ïß³Ì´úÀí²¢¸üĞÂÄÚ²¿µÄlambda
+	// åˆ›å»ºçº¿ç¨‹ä»£ç†å¹¶æ›´æ–°å†…éƒ¨çš„lambda
 	TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 	ThreadProxy->GetThreadLambda() = ThreadLambda;
 	
-	/* Ê¹ÓÃÄ¿±êÏß³Ì´úÀí´´½¨Ïß³ÌÊµÀı²¢×¢²áÏß³Ì³Ø,×îºó·µ»Ø1¸ùÈõ¾ä±ú*/
+	/* ä½¿ç”¨ç›®æ ‡çº¿ç¨‹ä»£ç†åˆ›å»ºçº¿ç¨‹å®ä¾‹å¹¶æ³¨å†Œçº¿ç¨‹æ± ,æœ€åè¿”å›1æ ¹å¼±å¥æŸ„*/
 	return UpdateThreadPool(ThreadProxy);
 }
 
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
-	ThreadProxy->CreateSafeThread();// Ê¹ÓÃÏß³Ì´úÀíÈ¥´´½¨Ïß³ÌÊµÀı
-	Pool.Add(ThreadProxy);// Ïß³Ì³ØÀï×¢²á ±¾Ïß³ÌÈİÆ÷
+	ThreadProxy->CreateSafeThread();// ä½¿ç”¨çº¿ç¨‹ä»£ç†å»åˆ›å»ºçº¿ç¨‹å®ä¾‹
+	Pool.Add(ThreadProxy);// çº¿ç¨‹æ± é‡Œæ³¨å†Œ æœ¬çº¿ç¨‹å®¹å™¨
 
-	return ThreadProxy->GetThreadHandle();//·µ»ØÏß³Ì´úÀíÀïµÄ Èõ¾ä±ú
+	return ThreadProxy->GetThreadHandle();//è¿”å›çº¿ç¨‹ä»£ç†é‡Œçš„ å¼±å¥æŸ„
 }
 

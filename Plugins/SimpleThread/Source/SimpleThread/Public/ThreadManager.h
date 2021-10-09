@@ -18,7 +18,7 @@ public:
 	* 借助简单委托, 给目标类对象绑定泛型多参C++函数
 	* 再次利用此线程代理, 注册进线程池并返回1个弱指针句柄
 	 */
-	template<class UserClass, typename... VarTypes>
+	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateThreadRaw(
 		UserClass* TargetClass, 
 		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
