@@ -17,6 +17,28 @@ void FThreadManagement::Destroy()
 	}
 }
 
+void FThreadManagement::CleanAllThread()
+{
+
+}
+
+void FThreadManagement::CleanThread(FWeakThreadHandle Handle)
+{
+
+}
+
+bool FThreadManagement::ProceduralProgress(FWeakThreadHandle Handle)
+{
+	return false;
+}
+
+bool FThreadManagement::Do(FWeakThreadHandle Handle)
+{
+//	ThreadProxy->CreateSafeThread();// 使用线程代理去创建线程实例
+
+	return false;
+}
+
 FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLambda)
 {
 	// 创建线程代理并更新内部的lambda
@@ -29,9 +51,8 @@ FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLam
 
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
-	ThreadProxy->CreateSafeThread();// 使用线程代理去创建线程实例
 	Pool.Add(ThreadProxy);// 线程池里注册 本线程容器
 
-	return ThreadProxy->GetThreadHandle();//返回线程代理里的 弱句柄
+	return ThreadProxy->GetThreadHandle();//返回线程里的 弱句柄
 }
 

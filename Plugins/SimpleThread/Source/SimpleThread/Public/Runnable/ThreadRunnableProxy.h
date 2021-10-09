@@ -10,8 +10,8 @@ public:
 	FThreadRunnable();
 	virtual ~FThreadRunnable();
 
-	virtual void SuspendThread() override;// 一个是挂起
-	virtual void WakeupThread() override;// 一个是唤醒
+	virtual void SuspendThread() override;// 挂起线程
+	virtual void WakeupThread() override;// 唤醒线程
 	virtual void CreateSafeThread() override;// 创建线程实例
 
 private:
@@ -22,6 +22,7 @@ private:
 private:
 	bool bRun;// 是否允许允许线程
 	bool bSuspend;// 是否挂起
+	bool bImplement;// 是否执行
 	FRunnableThread* Thread;//线程实例
 	FName RunnableName;//线程名字
 	FEvent* ThreadEvent;// 该事件专门负责挂起,谁执行就把挂起,再使用别的线程把当前唤醒
