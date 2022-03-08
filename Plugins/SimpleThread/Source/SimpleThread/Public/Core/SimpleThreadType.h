@@ -8,7 +8,7 @@
 #include "CoreMinimal.h"
 #include "Templates/SharedPointer.h"
 
-/* 用以查询并控制线程状态的 线程句柄*/
+/** 使用此类去检查线程到底处于何种状态.*/
 struct SIMPLETHREAD_API FSimpleThreadHandle : public TSharedFromThis<FSimpleThreadHandle>
 {
 	/* 构造器用以生成随机线程ID*/

@@ -27,14 +27,14 @@ FThreadRunnable::~FThreadRunnable()
 
 void FThreadRunnable::SuspendThread()
 {
-	bSuspend = true;
+	bSuspend = true;// 只要置为TRUE,则自然挂起.
 }
 
 /// 是由其他线程 来调用FThreadRunnable::WakeupThread()这个函数
 void FThreadRunnable::WakeupThread()
 {
 	bImplement = true;// 打开执行开关
-	ThreadEvent->Trigger();
+	ThreadEvent->Trigger();// 借助线程事件, 让别的线程来唤醒本线程.
 }
 
 void FThreadRunnable::CreateSafeThread()
@@ -46,6 +46,8 @@ void FThreadRunnable::CreateSafeThread()
 	ThreadCount++;
 }
 
+#pragma region override FRunable4个虚方法.
+//
 uint32 FThreadRunnable::Run()
 {
 	while (bRun) {
@@ -93,4 +95,5 @@ void FThreadRunnable::Exit()
 {
 	bRun = false;
 }
+#pragma endregion override FRunable4个虚方法.
 

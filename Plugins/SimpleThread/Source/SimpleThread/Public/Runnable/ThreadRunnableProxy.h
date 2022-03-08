@@ -10,22 +10,24 @@ public:
 	FThreadRunnable();
 	virtual ~FThreadRunnable();
 
+public:/// Override IThreadProxy
 	virtual void SuspendThread() override;// 挂起线程
 	virtual void WakeupThread() override;// 唤醒线程
 	virtual void CreateSafeThread() override;// 创建线程实例
 
-private:
+private:/// override FRunnable
 	virtual uint32 Run();
 	virtual bool Init();
 	virtual void Stop();
 	virtual void Exit();
+
 private:
 	bool bRun;// 是否允许允许线程
-	bool bSuspend;// 是否挂起
+	bool bSuspend;// 是否挂起本线程
 	bool bImplement;// 是否执行
 	FRunnableThread* Thread;//线程实例
 	FName RunnableName;//线程名字
-	FEvent* ThreadEvent;// 该事件专门负责挂起,谁执行就把挂起,再使用别的线程把当前唤醒
+	FEvent* ThreadEvent;// 本线程事件. 该事件专门负责挂起,谁执行就把挂起,再使用别的线程把当前唤醒
 
-	static int32 ThreadCount;// 静态线程计数
+	static int32 ThreadCount;// 静态,本线程计数.
 };
