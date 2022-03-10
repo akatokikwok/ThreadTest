@@ -18,6 +18,7 @@ private:/// 这些逻辑都不应该暴露,而是由封装的插件自己来清�
 public:
 	bool ProceduralProgress(FWeakThreadHandle Handle);// 利用句柄查询判断该线程是否闲置
 	bool Do(FWeakThreadHandle Handle);
+
 public:/// 从线程池里揪出空闲线程,然后仅用作绑定
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindRaw(
@@ -40,6 +41,11 @@ public:/// 从线程池里揪出空闲线程,然后仅用作绑定
 
 		return handle;
 	};
+
+protected:
+	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
+	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
+
 public:
 	/* 泛型方法: 
 	* 实例化1个线程代理,并拿取线程代理后访问到里面的简单委托
@@ -52,11 +58,11 @@ public:
 		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
 		VarTypes... Vars)
 	{
-		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable()); // 这一步实例化1个线程代理
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable()); // 这一步实例化1个线程代理; new一个子类赋给基类.
 
 		ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 这一步拿到IThreadProxy对象里的 简单委托,在此委托上 给待定的目标类对象 绑定C++函数
 		
-		return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个FSimpleThreadHandle,通过此句柄来查询当前线程的情况
+		return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个线程句柄,通过此句柄来查询当前线程的情况
 	};
 
 	template<typename UserClass, typename... VarTypes>
@@ -102,13 +108,8 @@ public:
 	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
 	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
 
-protected:
-	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
-	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
+private:
+	static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.
+	TArray<TSharedPtr<IThreadProxy>> Pool;// 线程池.
 
-private:
-	// 线程池
-	TArray<TSharedPtr<IThreadProxy>> Pool;
-private:
-	static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针
 };

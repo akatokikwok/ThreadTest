@@ -4,6 +4,7 @@
 #include "Core/SimpleThreadType.h"
 
 /**
+ * 线程代理类.
  * 借助此接口来实现 真正线程里应该具备的一些功能
  * TSharedFromThis<>类,携带弱指针
  * IThreadProxy();构造器负责 创建一个线程句柄, 用以检索线程ID

@@ -32,5 +32,5 @@ protected:
 
 };
 
-typedef TWeakPtr<FSimpleThreadHandle> FWeakThreadHandle; // 弱指针包装的线程句柄(携带线程ID); 注意!!这里是弱指针 线程句柄!!把这个线程句柄同时也声明为1根弱指针
+typedef TWeakPtr<FSimpleThreadHandle> FWeakThreadHandle; // 线程句柄,弱引用版本.
 typedef TFunction<void()> FThradLambda;// 一根函数指针, 用于线程的lambda

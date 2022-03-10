@@ -4,7 +4,7 @@ TSharedPtr<FThreadManagement> FThreadManagement::ThreadManagement = nullptr;
 
 TSharedRef<FThreadManagement> FThreadManagement::Get()
 {
-	if (ThreadManagement.IsValid()) {// 如果智能指针为空,就给他创建1个
+	if (!ThreadManagement.IsValid()) {// 如果智能指针为空,就给他创建1个
 		ThreadManagement = MakeShareable(new FThreadManagement());
 	}
 	return ThreadManagement.ToSharedRef();
@@ -51,8 +51,9 @@ FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLam
 
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
-	Pool.Add(ThreadProxy);// 线程池里注册 本线程容器
+	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
+	Pool.Add(ThreadProxy);// 线程代理池里存一个新的线程代理.
 
-	return ThreadProxy->GetThreadHandle();//返回线程里的 弱句柄
+	return ThreadProxy->GetThreadHandle();//返回线程代理里的弱句柄.
 }
 
