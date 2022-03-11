@@ -39,8 +39,8 @@ void FThreadRunnable::WakeupThread()
 
 void FThreadRunnable::CreateSafeThread()
 {
-	bImplement = true;// 当且仅当创建线程实例时候开启执行
-	RunnableName = *FString::Printf( TEXT("SimpleThread--%i"), ThreadCount );// 做个线程名字
+	bImplement = true;// 创建的时候,确认要执行.
+	RunnableName = *FString::Printf(TEXT("SimpleThread--%i"), ThreadCount);// 做个线程名字
 
 	Thread = FRunnableThread::Create(this, *RunnableName.ToString(), 0, TPri_BelowNormal);// 用线程名创建线程实例并计数增加
 	ThreadCount++;
@@ -62,7 +62,8 @@ uint32 FThreadRunnable::Run()
 			if (ThreadDelegate.IsBound()) {
 				ThreadDelegate.Execute();
 				ThreadDelegate.Unbind();// 执行完了就解绑定
-			} else {
+			}
+			else {
 				ThreadLambda();// 只要上面的简单代理没有绑定函数,就强制执行lambda
 				ThreadLambda = nullptr;// 结束了就把函数指针置空
 			}
@@ -80,7 +81,8 @@ bool FThreadRunnable::Init()
 {
 	if (!FPlatformProcess::SupportsMultithreading()) {
 		bRun = false;
-	} else {
+	}
+	else {
 		bRun = true;
 	}
 	return bRun;

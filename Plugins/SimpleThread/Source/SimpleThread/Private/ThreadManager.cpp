@@ -29,6 +29,7 @@ void FThreadManagement::CleanThread(FWeakThreadHandle Handle)
 
 bool FThreadManagement::ProceduralProgress(FWeakThreadHandle Handle)
 {
+
 	return false;
 }
 
@@ -51,7 +52,7 @@ FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLam
 
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
-	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
+// 	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
 	Pool.Add(ThreadProxy);// 线程代理池里存一个新的线程代理.
 
 	return ThreadProxy->GetThreadHandle();//返回线程代理里的弱句柄.
