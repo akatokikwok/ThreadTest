@@ -5,6 +5,14 @@
 #include "Runnable/ThreadRunnableProxy.h"
 #include "Core/SimpleThreadType.h"
 
+enum class EThreadState
+{
+	LEISURELY,
+	WORKING,
+	ERROR
+};
+
+
 /* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数*/
 class SIMPLETHREAD_API FThreadManagement : public TSharedFromThis<FThreadManagement>
 {
@@ -13,31 +21,133 @@ public:
 	static void Destroy();// 单例模式:置空静态单例
 
 private:/// 这些逻辑都不应该暴露,而是由封装的插件自己来清除线程.
-	void CleanAllThread();// 清除所有线程
-	void CleanThread(FWeakThreadHandle Handle);// 清除指定句柄的线程.
+	// 清除所有线程.
+	void CleanAllThread();
+	// 清除单个线程.
+	void CleanThread(FWeakThreadHandle Handle);
 
 public:
-	bool ProceduralProgress(FWeakThreadHandle Handle);// 利用句柄查询判断该线程是否闲置
+	// 查询指定句柄的线程是否闲置.
+	EThreadState ProceduralProgress(FWeakThreadHandle Handle);
+	// 唤醒指定句柄的线程.
 	bool Do(FWeakThreadHandle Handle);
 
-public:/// 从线程池里揪出空闲线程,然后仅用作绑定
+public:/// 从线程代理池里查空闲线程,然后仅用作绑定
+
+	/** Bind Raw.*/
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindRaw(
 		UserClass* TargetClass,
 		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-		VarTypes... Vars)
+		VarTypes... Vars
+	)
 	{
 		FWeakThreadHandle handle;// 假设1个闲置线程句柄.
-		for (auto& ThreadProxy : Pool) {// 遍历线程池查询闲置线程
-			if (ProceduralProgress(ThreadProxy->GetThreadHandle())) {
+		for (auto& ThreadProxy : Pool) {// 遍历线程池查询挂起的线程.
+			if (ThreadProxy->IsSuspend()) {
 				ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 给闲置线程绑 C++函数.
 				handle = ThreadProxy->GetThreadHandle();// cache闲置线程代理 的句柄.
 				break;// 若线程代理是闲置的,就跳出for.
 			}
 		}
+		// 若所有线程都在忙,不存在挂起的那个,
+		if (!handle.IsValid()) {// 若未查到闲置线程代理,则直接调用API创一个.
+			handle = CreateThreadRaw<UserClass, VarTypes...>(TargetClass, InMethod, Vars...);
+		}
 
-		if ( !handle.IsValid() ) {// 若未查到闲置线程代理,则直接调用API创一个.
-			CreateThreadRaw<UserClass, VarTypes...>(TargetClass, InMethod, Vars...);
+		return handle;
+	};
+
+	/** Bind UObject. */
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle BindUObject(
+		UserClass* TargetClass,
+		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+		VarTypes... Vars
+	)
+	{
+		FWeakThreadHandle handle;// 假设1个闲置线程句柄.
+		for (auto& ThreadProxy : Pool) {// 遍历线程池查询闲置线程
+			if (ThreadProxy->IsSuspend()) {
+				ThreadProxy->GetThreadDelegate().BindUObject(TargetClass, InMethod, Vars...);
+				handle = ThreadProxy->GetThreadHandle();// cache闲置线程代理 的句柄.
+				break;// 若线程代理是闲置的,就跳出for.
+			}
+		}
+
+		if (!handle.IsValid()) {// 若未查到闲置线程代理,则直接调用API创一个.
+			handle = CreateThreadUObject<UserClass, VarTypes...>(TargetClass, InMethod, Vars...);
+		}
+
+		return handle;
+	};
+
+	/**  Bind UFunction.*/
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle BindUFunction(
+		UserClass* TargetClass,
+		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+		VarTypes... Vars
+	)
+	{
+		FWeakThreadHandle handle;// 假设1个闲置线程句柄.
+		for (auto& ThreadProxy : Pool) {// 遍历线程池查询闲置线程
+			if (ThreadProxy->IsSuspend()) {
+				ThreadProxy->GetThreadDelegate().BindUFunction(TargetClass, InMethod, Vars...);
+				handle = ThreadProxy->GetThreadHandle();// cache闲置线程代理 的句柄.
+				break;// 若线程代理是闲置的,就跳出for.
+			}
+		}
+
+		if (!handle.IsValid()) {// 若未查到闲置线程代理,则直接调用API创一个.
+			handle = CreateThreadUFunction<UserClass, VarTypes...>(TargetClass, InMethod, Vars...);
+		}
+
+		return handle;
+	};
+
+	/** Bind Lambda. */
+	template<typename... VarTypes>
+	FWeakThreadHandle BindLambda(
+		TFunction<void(VarTypes...)> InMethod,
+		VarTypes... Vars
+	)
+	{
+		FWeakThreadHandle handle;// 假设1个闲置线程句柄.
+		for (auto& ThreadProxy : Pool) {// 遍历线程池查询闲置线程
+			if (ThreadProxy->IsSuspend()) {
+				ThreadProxy->GetThreadDelegate().BindLambda(InMethod, Vars...);
+				handle = ThreadProxy->GetThreadHandle();// cache闲置线程代理 的句柄.
+				break;// 若线程代理是闲置的,就跳出for.
+			}
+		}
+
+		if (!handle.IsValid()) {// 若未查到闲置线程代理,则直接调用API创一个.
+			handle = CreateThreadLambda<VarTypes...>(InMethod, Vars...);
+		}
+
+		return handle;
+	};
+
+	/** Bind SP. */
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle BindSP(
+		UserClass* TargetClass,
+		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+		VarTypes... Vars
+	)
+	{
+		FWeakThreadHandle handle;// 假设1个闲置线程句柄.
+		for (auto& ThreadProxy : Pool) {// 遍历线程池查询闲置线程
+			if (ThreadProxy->IsSuspend()) {
+				ThreadProxy->GetThreadDelegate().BindSP(TargetClass, InMethod, Vars...);
+				handle = ThreadProxy->GetThreadHandle();// cache闲置线程代理 的句柄.
+				break;// 若线程代理是闲置的,就跳出for.
+			}
+		}
+
+		if (!handle.IsValid()) {// 若未查到闲置线程代理,则直接调用API创一个.
+			handle = CreateThreadSP<UserClass, VarTypes...>(TargetClass, InMethod, Vars...);
 		}
 
 		return handle;
@@ -48,21 +158,21 @@ protected:
 	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
 
 public:
-	/* 泛型方法: 
+	/* 泛型方法:
 	* 实例化1个线程代理,并拿取线程代理后访问到里面的简单委托
 	* 借助简单委托, 给目标类对象绑定泛型多参C++函数
 	* 再次利用此线程代理, 注册进线程池并返回1个弱指针句柄
 	 */
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateThreadRaw(
-		UserClass* TargetClass, 
+		UserClass* TargetClass,
 		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
 		VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable()); // 这一步实例化1个线程代理; new一个子类赋给基类.
 
 		ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 这一步拿到IThreadProxy对象里的 简单委托,在此委托上 给待定的目标类对象 绑定C++函数
-		
+
 		return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个线程句柄,通过此句柄来查询当前线程的情况
 	};
 
@@ -88,8 +198,8 @@ public:
 
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateThreadSP(UserClass* TargetClass,
-		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-		VarTypes... Vars)
+									 typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+									 VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindSP(TargetClass, InMethod, Vars...);
@@ -98,8 +208,8 @@ public:
 
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateThreadUObject(UserClass* TargetClass,
-		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-		VarTypes... Vars)
+										  typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+										  VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindUObject(TargetClass, InMethod, Vars...);

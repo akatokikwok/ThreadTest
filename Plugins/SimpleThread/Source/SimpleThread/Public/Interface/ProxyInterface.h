@@ -12,14 +12,19 @@
 class SIMPLETHREAD_API IThreadProxy : public TSharedFromThis<IThreadProxy>
 {
 public:
-	//
-	IThreadProxy();// 创建一个线程句柄, 句柄里有GUID检索,用以检索线程ID.
+	// 创建一个线程句柄, 句柄里有GUID检索,用以检索线程ID.
+	IThreadProxy();
+	// 虚析构,派生类重写.
 	virtual ~IThreadProxy();
-	
-	//
-	virtual void SuspendThread() = 0;// 挂起某线程.
-	virtual void WakeupThread() = 0;// 唤醒某线程.
-	virtual void CreateSafeThread() = 0;// 创建某线程.
+
+	// 唤醒某线程.
+	virtual void WakeupThread() = 0;
+	// 创建某线程.
+	virtual void CreateSafeThread() = 0;
+	// 线程是否挂起.
+	virtual bool IsSuspend() = 0;
+	// 线程执行后的逻辑.
+	virtual void WaitAndCompleted() = 0; 
 
 public:
 	FORCEINLINE FSimpleDelegate& GetThreadDelegate() { return ThreadDelegate; }
