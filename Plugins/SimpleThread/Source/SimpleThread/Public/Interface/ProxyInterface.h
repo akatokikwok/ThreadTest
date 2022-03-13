@@ -25,6 +25,8 @@ public:
 	virtual bool IsSuspend() = 0;
 	// 线程执行后的逻辑.
 	virtual void WaitAndCompleted() = 0; 
+	// 专门用以阻塞主线程.
+	virtual void BlockingAndCompletion() = 0;// 阻塞并完成.
 
 public:
 	FORCEINLINE FSimpleDelegate& GetThreadDelegate() { return ThreadDelegate; }

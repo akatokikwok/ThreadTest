@@ -4,6 +4,7 @@
 #include "Interface/ProxyInterface.h"
 #include "Runnable/ThreadRunnableProxy.h"
 #include "Core/SimpleThreadType.h"
+#include "Windows/WindowsCriticalSection.h"
 
 enum class EThreadState
 {
@@ -13,7 +14,9 @@ enum class EThreadState
 };
 
 
-/* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数*/
+/* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数 
+ * 该类线程安全.所有使用到线程池的操作均引入了作用域锁.
+ */
 class SIMPLETHREAD_API FThreadManagement : public TSharedFromThis<FThreadManagement>
 {
 public:
@@ -29,8 +32,14 @@ private:/// 这些逻辑都不应该暴露,而是由封装的插件自己来清�
 public:
 	// 查询指定句柄的线程是否闲置.
 	EThreadState ProceduralProgress(FWeakThreadHandle Handle);
-	// 唤醒指定句柄的线程.
+	
+	// 激活指定线程, 但不阻塞激活线程的持有者.
+	// 异步;
 	bool Do(FWeakThreadHandle Handle);
+
+	// 开启线程; 且阻塞激活线程的持有者,即主线程(亦或是启动线程)直至子线程的任务完成.
+	// 同步; 多应用于CPU GPU之间管线.
+	bool DoWait(FWeakThreadHandle Handle);
 
 public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 
@@ -222,5 +231,7 @@ public:
 private:
 	static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.
 	TArray<TSharedPtr<IThreadProxy>> Pool;// 线程池.
+
+	FCriticalSection Mutex;// 作用域锁; 为了防止多个线程进行资源争夺.
 
 };

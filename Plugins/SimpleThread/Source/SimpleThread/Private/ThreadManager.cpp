@@ -20,6 +20,7 @@ void FThreadManagement::Destroy()
 
 void FThreadManagement::CleanAllThread()
 {
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
 	for (auto& ThreadProxy : Pool) {
 		ThreadProxy->WaitAndCompleted();
 	}
@@ -28,6 +29,7 @@ void FThreadManagement::CleanAllThread()
 
 void FThreadManagement::CleanThread(FWeakThreadHandle Handle)
 {
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
 	int32 RemoveIndex = INDEX_NONE;
 	for (int32 i = 0; i < Pool.Num(); ++i) {
 		if (Pool[i]->GetThreadHandle() == Handle) {
@@ -46,7 +48,7 @@ EThreadState FThreadManagement::ProceduralProgress(FWeakThreadHandle Handle)
 	if (!Handle.IsValid()) {
 		return EThreadState::ERROR;
 	}
-
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
 	for (auto& ThreadProxy : Pool) {
 		if (ThreadProxy->IsSuspend()) {
 			if (Handle == ThreadProxy->GetThreadHandle()) {
@@ -60,11 +62,31 @@ EThreadState FThreadManagement::ProceduralProgress(FWeakThreadHandle Handle)
 
 bool FThreadManagement::Do(FWeakThreadHandle Handle)
 {
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
+
 	// 查到当前线程句柄是闲置的,就把遍历出来的线程唤醒.
 	for (auto& ThreadProxy : Pool) {
 		if (ThreadProxy->IsSuspend()) {
 			if (Handle == ThreadProxy->GetThreadHandle()) {
 				ThreadProxy->WakeupThread();
+
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool FThreadManagement::DoWait(FWeakThreadHandle Handle)
+{
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
+
+	// 查到当前线程句柄是闲置的,就把遍历出来的线程唤醒.
+	for (auto& ThreadProxy : Pool) {
+		if (ThreadProxy->IsSuspend()) {
+			if (Handle == ThreadProxy->GetThreadHandle()) {
+				ThreadProxy->BlockingAndCompletion();
 
 				return true;
 			}
@@ -87,6 +109,8 @@ FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLam
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
 	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
+
+	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
 	Pool.Add(ThreadProxy);// 线程代理池里存一个新的线程代理.
 
 	return ThreadProxy->GetThreadHandle();//返回线程代理里的弱句柄.

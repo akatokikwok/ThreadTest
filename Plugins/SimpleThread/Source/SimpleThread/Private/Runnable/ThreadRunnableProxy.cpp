@@ -12,6 +12,7 @@ FThreadRunnable::FThreadRunnable()
 	, Thread(nullptr)// 线程实例置空
 	, ThreadEvent(FPlatformProcess::GetSynchEventFromPool())
 	, StartUpEvent(FPlatformProcess::GetSynchEventFromPool())
+	, WaitExecuteEvent(FPlatformProcess::GetSynchEventFromPool())
 {
 
 }
@@ -20,8 +21,8 @@ FThreadRunnable::~FThreadRunnable()
 {
 	// 释放事件对象
 	FPlatformProcess::ReturnSynchEventToPool(ThreadEvent);
-	// 释放事件对象
 	FPlatformProcess::ReturnSynchEventToPool(StartUpEvent);
+	FPlatformProcess::ReturnSynchEventToPool(WaitExecuteEvent);
 
 	if (Thread != nullptr) {
 		delete Thread;
@@ -68,6 +69,11 @@ void FThreadRunnable::WaitAndCompleted()
 	FPlatformProcess::Sleep(0.03f);// 目的是让运行的线程有足够的时间返回.
 }
 
+void FThreadRunnable::BlockingAndCompletion()
+{
+	WaitExecuteEvent->Wait();// 让该信号量执行等待.
+}
+
 #pragma region override FRunable4个虚方法.
 //
 uint32 FThreadRunnable::Run()
@@ -78,6 +84,7 @@ uint32 FThreadRunnable::Run()
 		}
 
 		if (bImplement) {
+			bSuspend = false;// 关闭挂起flag.
 			bImplement = false;// 这一步是为了仅执行一次,不执行多次
 			/// 业务逻辑
 			/* 检查字段 简单代理是不是绑了函数,绑了就执行,否则就强制执行lambda*/
@@ -92,12 +99,11 @@ uint32 FThreadRunnable::Run()
 
  			// 若上面步骤都做了一遍,那么就激活挂起flag.
 			bSuspend = true;
+			// 激活 阻塞主线程的信号量.
+			WaitExecuteEvent->Trigger();
 		}
 
 	}
-
-	// 如果某线程跳出来了while,一定要执行一次激活主线程.
-	StartUpEvent->Trigger();
 
 	return 0;
 }
@@ -120,7 +126,8 @@ void FThreadRunnable::Stop()
 
 void FThreadRunnable::Exit()
 {
-	bRun = false;
+	// 退出的时候,唤醒主线程.
+	StartUpEvent->Trigger();
 }
 #pragma endregion override FRunable4个虚方法.
 
