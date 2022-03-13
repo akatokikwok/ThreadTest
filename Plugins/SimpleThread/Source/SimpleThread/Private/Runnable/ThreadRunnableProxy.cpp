@@ -17,6 +17,19 @@ FThreadRunnable::FThreadRunnable()
 
 }
 
+FThreadRunnable::FThreadRunnable(bool IsSuspend)
+	:IThreadProxy()
+	, bRun(false)
+	, bSuspend(IsSuspend)// 由外部决定是否挂起.
+// 	, bImplement(false)// 不执行
+	, Thread(nullptr)// 线程实例置空
+	, ThreadEvent(FPlatformProcess::GetSynchEventFromPool())
+	, StartUpEvent(FPlatformProcess::GetSynchEventFromPool())
+	, WaitExecuteEvent(FPlatformProcess::GetSynchEventFromPool())
+{
+
+}
+
 FThreadRunnable::~FThreadRunnable()
 {
 	// 释放事件对象
@@ -38,13 +51,13 @@ FThreadRunnable::~FThreadRunnable()
 /// 是由其他线程 来调用FThreadRunnable::WakeupThread()这个函数
 void FThreadRunnable::WakeupThread()
 {
-// 	bImplement = true;// 打开执行开关
+	// 	bImplement = true;// 打开执行开关
 	ThreadEvent->Trigger();// 借助线程事件, 让别的线程来唤醒本线程.
 }
 
 void FThreadRunnable::CreateSafeThread()
 {
-// 	bImplement = true;// 创建的时候,确认要执行.
+	// 	bImplement = true;// 创建的时候,确认要执行.
 	RunnableName = *FString::Printf(TEXT("SimpleThread--%i"), ThreadCount);// 做个线程名字
 
 	Thread = FRunnableThread::Create(this, *RunnableName.ToString(), 0, TPri_BelowNormal);// 用线程名创建线程实例并计数增加
@@ -61,7 +74,7 @@ void FThreadRunnable::WaitAndCompleted()
 {
 	// 刷新为不激活不运行.
 	bRun = false;
-// 	bImplement = false;
+	// 	bImplement = false;
 
 	ThreadEvent->Trigger();// 激活原有的线程.
 	StartUpEvent->Wait();// 阻塞我们的启动线程.

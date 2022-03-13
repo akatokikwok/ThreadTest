@@ -18,6 +18,14 @@ void FThreadManagement::Destroy()
 	}
 }
 
+void FThreadManagement::Init(int32 ThreadNum)
+{
+	for (int32 i = 0; i < ThreadNum; ++i) {
+// 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());// 使用的是默认构造器.
+		UpdateThreadPool(MakeShareable(new FThreadRunnable()));
+	}
+}
+
 void FThreadManagement::CleanAllThread()
 {
 	FScopeLock ScopeLock(&Mutex);// 加作用域锁.

@@ -23,7 +23,10 @@ public:
 	static TSharedRef<FThreadManagement> Get();// 单例模式:拿取本类引用
 	static void Destroy();// 单例模式:置空静态单例
 
-private:/// 这些逻辑都不应该暴露,而是由封装的插件自己来清除线程.
+private:
+	// 初始化一堆线程; 即new出一堆FThreadRunnable类实例.
+	void Init(int32 ThreadNum);
+	
 	// 清除所有线程.
 	void CleanAllThread();
 	// 清除单个线程.
@@ -35,10 +38,12 @@ public:
 
 	// 激活指定线程, 但不阻塞激活线程的持有者.
 	// 异步;
+	// 使用该方法必须和绑定之间要有一帧的时间间隔.
 	bool Do(FWeakThreadHandle Handle);
 
 	// 开启线程; 且阻塞激活线程的持有者,即主线程(亦或是启动线程)直至子线程的任务完成.
 	// 同步; 多应用于CPU GPU之间管线.
+	// 使用该方法必须和绑定之间要有一帧的时间间隔.
 	bool DoWait(FWeakThreadHandle Handle);
 
 public:/// 从线程代理池里查空闲线程,然后仅用作绑定
@@ -166,12 +171,26 @@ protected:
 	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
 	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
 
-public:
+public:/// 直接创建线程并执行绑定(当创建非挂起版本).
+	/** Create Raw. */
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		// 创建一个不被挂起的线程; 使用显式构造器,让线程创建的时候默认不挂起.
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+
+		ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 这一步拿到IThreadProxy对象里的 简单委托,在此委托上 给待定的目标类对象 绑定C++函数
+
+		return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个线程句柄,通过此句柄来查询当前线程的情况
+	};
+
+public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	/* 泛型方法:
 	* 实例化1个线程代理,并拿取线程代理后访问到里面的简单委托
 	* 借助简单委托, 给目标类对象绑定泛型多参C++函数
 	* 再次利用此线程代理, 注册进线程池并返回1个弱指针句柄
 	 */
+
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateThreadRaw(
 		UserClass* TargetClass,

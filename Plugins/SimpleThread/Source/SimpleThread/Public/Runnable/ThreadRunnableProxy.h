@@ -4,11 +4,15 @@
 #include "HAL/Runnable.h"
 #include "Windows/WindowsCriticalSection.h"
 
-/* 自定义类: FThreadRunnable-- 多继承自1个线程代理, 1个FRunnable*/
+/* 自定义类: FThreadRunnable-- 多继承自1个线程代理, 1个FRunnable
+ * FThreadRunnable();// 默认构造器.
+ * FThreadRunnable(bool IsSuspend);// 显示的构造器.
+ */
 class SIMPLETHREAD_API FThreadRunnable : public FRunnable, public IThreadProxy// 多继承1个线程代理, 1个FRunnable
 {
 public:
-	FThreadRunnable();
+	FThreadRunnable();// 默认构造器.创建的时候默认激活挂起符号.
+	FThreadRunnable(bool IsSuspend);// 显式的构造器.创建的时候动态指定是否挂起线程.
 	virtual ~FThreadRunnable();
 
 public:/// Override IThreadProxy
