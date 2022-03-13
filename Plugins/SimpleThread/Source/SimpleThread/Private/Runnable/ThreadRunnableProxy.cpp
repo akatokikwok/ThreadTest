@@ -8,7 +8,7 @@ FThreadRunnable::FThreadRunnable()
 	:IThreadProxy()
 	, bRun(false)
 	, bSuspend(true)// 默认挂起.
-	, bImplement(false)// 不执行
+// 	, bImplement(false)// 不执行
 	, Thread(nullptr)// 线程实例置空
 	, ThreadEvent(FPlatformProcess::GetSynchEventFromPool())
 	, StartUpEvent(FPlatformProcess::GetSynchEventFromPool())
@@ -38,13 +38,13 @@ FThreadRunnable::~FThreadRunnable()
 /// 是由其他线程 来调用FThreadRunnable::WakeupThread()这个函数
 void FThreadRunnable::WakeupThread()
 {
-	bImplement = true;// 打开执行开关
+// 	bImplement = true;// 打开执行开关
 	ThreadEvent->Trigger();// 借助线程事件, 让别的线程来唤醒本线程.
 }
 
 void FThreadRunnable::CreateSafeThread()
 {
-	bImplement = true;// 创建的时候,确认要执行.
+// 	bImplement = true;// 创建的时候,确认要执行.
 	RunnableName = *FString::Printf(TEXT("SimpleThread--%i"), ThreadCount);// 做个线程名字
 
 	Thread = FRunnableThread::Create(this, *RunnableName.ToString(), 0, TPri_BelowNormal);// 用线程名创建线程实例并计数增加
@@ -61,7 +61,7 @@ void FThreadRunnable::WaitAndCompleted()
 {
 	// 刷新为不激活不运行.
 	bRun = false;
-	bImplement = false;
+// 	bImplement = false;
 
 	ThreadEvent->Trigger();// 激活原有的线程.
 	StartUpEvent->Wait();// 阻塞我们的启动线程.
@@ -83,26 +83,18 @@ uint32 FThreadRunnable::Run()
 			ThreadEvent->Wait();// 如果检查确认是挂起标志启用的话, 就执行把线程挂起来
 		}
 
-		if (bImplement) {
-			bSuspend = false;// 关闭挂起flag.
-			bImplement = false;// 这一步是为了仅执行一次,不执行多次
-			/// 业务逻辑
-			/* 检查字段 简单代理是不是绑了函数,绑了就执行,否则就强制执行lambda*/
-			if (ThreadDelegate.IsBound()) {
-				ThreadDelegate.Execute();
-				ThreadDelegate.Unbind();// 执行完了就解绑定
-			}
-			else {
-				ThreadLambda();// 只要上面的简单代理没有绑定函数,就强制执行lambda
-				ThreadLambda = nullptr;// 结束了就把函数指针置空
-			}
-
- 			// 若上面步骤都做了一遍,那么就激活挂起flag.
-			bSuspend = true;
-			// 激活 阻塞主线程的信号量.
-			WaitExecuteEvent->Trigger();
+		bSuspend = false;// 关闭挂起flag.
+		/// 业务逻辑
+		/* 检查字段 简单代理是不是绑了函数,绑了就执行,否则就强制执行lambda*/
+		if (ThreadDelegate.IsBound()) {
+			ThreadDelegate.Execute();
+			ThreadDelegate.Unbind();// 执行完了就解绑定
 		}
 
+		// 若上面步骤都做了一遍,那么就激活挂起flag.
+		bSuspend = true;
+		// 激活 阻塞主线程的信号量.
+		WaitExecuteEvent->Trigger();
 	}
 
 	return 0;

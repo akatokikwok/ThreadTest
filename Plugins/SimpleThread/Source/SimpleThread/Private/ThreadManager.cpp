@@ -96,21 +96,21 @@ bool FThreadManagement::DoWait(FWeakThreadHandle Handle)
 	return false;
 }
 
-FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLambda)
-{
-	// 创建线程代理并更新内部的lambda
-	TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
-	ThreadProxy->GetThreadLambda() = ThreadLambda;
-
-	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
-	return UpdateThreadPool(ThreadProxy);
-}
+// FWeakThreadHandle FThreadManagement::CreatetThread(const FThradLambda& ThreadLambda)
+// {
+// 	// 创建线程代理并更新内部的lambda
+// 	TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
+// 	ThreadProxy->GetThreadLambda() = ThreadLambda;
+// 
+// 	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
+// 	return UpdateThreadPool(ThreadProxy);
+// }
 
 FWeakThreadHandle FThreadManagement::UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy)
 {
-	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
-
 	FScopeLock ScopeLock(&Mutex);// 加作用域锁.
+
+	ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
 	Pool.Add(ThreadProxy);// 线程代理池里存一个新的线程代理.
 
 	return ThreadProxy->GetThreadHandle();//返回线程代理里的弱句柄.

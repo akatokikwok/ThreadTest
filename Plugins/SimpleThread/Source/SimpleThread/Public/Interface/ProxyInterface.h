@@ -30,12 +30,13 @@ public:
 
 public:
 	FORCEINLINE FSimpleDelegate& GetThreadDelegate() { return ThreadDelegate; }
-	FORCEINLINE FThradLambda& GetThreadLambda() { return ThreadLambda; }
+// 	FORCEINLINE FThradLambda& GetThreadLambda() { return ThreadLambda; }
+
 	FORCEINLINE FWeakThreadHandle GetThreadHandle() { return (SimpleThreadHandle); }// 拿句柄的弱引用版,注意此接口返回的是弱指针,弱指针声明在Type.h里
 
 protected:
 	FSimpleDelegate ThreadDelegate;// UE4内建单播代理的一种,UE引擎自己的单播代理
-	FThradLambda ThreadLambda;// 一根函数指针,线程Lambda
+// 	FThradLambda ThreadLambda;// 一根函数指针,线程Lambda
 
 private:
 	TSharedPtr<FSimpleThreadHandle> SimpleThreadHandle;// 线程句柄,这里是强引用!!!

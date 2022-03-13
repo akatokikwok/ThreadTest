@@ -14,7 +14,7 @@ enum class EThreadState
 };
 
 
-/* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数 
+/* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数
  * 该类线程安全.所有使用到线程池的操作均引入了作用域锁.
  */
 class SIMPLETHREAD_API FThreadManagement : public TSharedFromThis<FThreadManagement>
@@ -32,7 +32,7 @@ private:/// 这些逻辑都不应该暴露,而是由封装的插件自己来清�
 public:
 	// 查询指定句柄的线程是否闲置.
 	EThreadState ProceduralProgress(FWeakThreadHandle Handle);
-	
+
 	// 激活指定线程, 但不阻塞激活线程的持有者.
 	// 异步;
 	bool Do(FWeakThreadHandle Handle);
@@ -95,7 +95,7 @@ public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindUFunction(
 		UserClass* TargetClass,
-		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
+		const FName& InMethod,
 		VarTypes... Vars
 	)
 	{
@@ -116,9 +116,9 @@ public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 	};
 
 	/** Bind Lambda. */
-	template<typename... VarTypes>
+	template<typename FunctorType, typename... VarTypes>
 	FWeakThreadHandle BindLambda(
-		TFunction<void(VarTypes...)> InMethod,
+		FunctorType&& InMethod,/* 使用右值引用是为了防止传进来的方法内存拷贝.*/
 		VarTypes... Vars
 	)
 	{
@@ -141,7 +141,7 @@ public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 	/** Bind SP. */
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindSP(
-		UserClass* TargetClass,
+		const TSharedRef<UserClass>& TargetClass,
 		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
 		VarTypes... Vars
 	)
@@ -196,9 +196,9 @@ public:
 		return UpdateThreadPool(ThreadProxy);
 	}
 
-	template<typename... VarTypes>
+	template<typename FunctorType, typename... VarTypes>
 	FWeakThreadHandle CreateThreadLambda(
-		TFunction<void(VarTypes...)> InMethod, VarTypes... Vars)
+		FunctorType&& InMethod, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindLambda(InMethod, Vars...);
@@ -206,7 +206,7 @@ public:
 	}
 
 	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateThreadSP(UserClass* TargetClass,
+	FWeakThreadHandle CreateThreadSP(const TSharedRef<UserClass>& TargetClass,
 									 typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
 									 VarTypes... Vars)
 	{
@@ -225,8 +225,8 @@ public:
 		return UpdateThreadPool(ThreadProxy);
 	}
 
-	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
-	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
+// 	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
+// 	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
 
 private:
 	static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.

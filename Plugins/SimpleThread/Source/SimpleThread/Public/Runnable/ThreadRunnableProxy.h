@@ -29,7 +29,8 @@ private:/// override FRunnable
 private:
 	bool bRun;// 是否允许允许线程
 	bool bSuspend;// 是否挂起本线程
-	bool bImplement;// 是否执行
+//  	bool bImplement;// 是否执行
+
 	FRunnableThread* Thread;//线程实例
 	FName RunnableName;//线程名字
 
