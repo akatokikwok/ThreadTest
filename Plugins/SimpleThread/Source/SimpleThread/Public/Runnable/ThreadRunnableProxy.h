@@ -3,6 +3,7 @@
 #include "Interface/ProxyInterface.h"
 #include "HAL/Runnable.h"
 #include "Windows/WindowsCriticalSection.h"
+#include "Core/SimpleSemaphore.h"
 
 /* 自定义类: FThreadRunnable-- 多继承自1个线程代理, 1个FRunnable
  * FThreadRunnable();// 默认构造器.
@@ -11,8 +12,8 @@
 class SIMPLETHREAD_API FThreadRunnable : public FRunnable, public IThreadProxy// 多继承1个线程代理, 1个FRunnable
 {
 public:
-	FThreadRunnable();// 默认构造器.创建的时候默认激活挂起符号.
-	FThreadRunnable(bool IsSuspend);// 显式的构造器.创建的时候动态指定是否挂起线程.
+// 	FThreadRunnable();// 默认构造器.创建的时候默认激活挂起符号.
+	FThreadRunnable(bool IsSuspendAtFirst = false);// 显式的构造器.创建的时候动态指定是否挂起线程.
 	virtual ~FThreadRunnable();
 
 public:/// Override IThreadProxy
@@ -32,15 +33,16 @@ private:/// override FRunnable
 
 private:
 	bool bRun;// 是否允许允许线程
-	bool bSuspend;// 是否挂起本线程
+	bool bSuspendAtFirst;// 第一次是否允许挂起.
 //  	bool bImplement;// 是否执行
 
 	FRunnableThread* Thread;//线程实例
 	FName RunnableName;//线程名字
 
-	FEvent* ThreadEvent;// 本线程事件. 该事件专门负责挂起,谁执行就把挂起,再使用别的线程把当前唤醒
-	FEvent* StartUpEvent;// 专供主线程用的事件.
-	FEvent* WaitExecuteEvent;// 阻塞主线程用的信号量.
+	/** FSimpleSemaphore类封装了FEvent信号量. */
+	FSimpleSemaphore ThreadEvent;// "某线程"信号量. 该事件专门负责挂起,谁执行就把挂起,再使用别的线程把当前唤醒
+	FSimpleSemaphore StartUpEvent;// "启动线程"的信号量.
+	FSimpleSemaphore WaitExecuteEvent;// "已挂起"的信号量.
 
 	FCriticalSection Mutex;
 
