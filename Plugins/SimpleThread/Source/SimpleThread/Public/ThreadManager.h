@@ -5,6 +5,17 @@
 #include "Runnable/ThreadRunnableProxy.h"
 #include "Core/SimpleThreadType.h"
 #include "Windows/WindowsCriticalSection.h"
+#include "Containers/Queue.h"
+#include "Tickable.h"
+
+#if PLATFORM_WINDOWS
+#include <iostream>
+#include <thread>
+using namespace std;
+#define CPUThreadNumber std::thread::hardware_concurrency();
+#else
+#define CPUThreadNumber 12
+#endif
 
 enum class EThreadState
 {
@@ -13,26 +24,24 @@ enum class EThreadState
 	ERROR
 };
 
-
 /* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数
  * 该类线程安全.所有使用到线程池的操作均引入了作用域锁.
  */
 class SIMPLETHREAD_API FThreadManagement : public TSharedFromThis<FThreadManagement>
+	, public FTickableGameObject// 需要多继承自FTickableGameObject,方便监视.
 {
 public:
 	static TSharedRef<FThreadManagement> Get();// 单例模式:拿取本类引用
 	static void Destroy();// 单例模式:置空静态单例
 
 private:
-	// 初始化一堆线程; 即new出一堆FThreadRunnable类实例.
-	void Init(int32 ThreadNum);
-	
-	// 清除所有线程.
-	void CleanAllThread();
-	// 清除单个线程.
-	void CleanThread(FWeakThreadHandle Handle);
+	virtual void Tick( float DeltaTime ) override;
+	virtual TStatId GetStatId() const override;
 
 public:
+	// 初始化一堆线程; 即new出一堆FThreadRunnable类实例.
+	void Init(int32 ThreadNum);
+
 	// 查询指定句柄的线程是否闲置.
 	EThreadState ProceduralProgress(FWeakThreadHandle Handle);
 
@@ -45,6 +54,58 @@ public:
 	// 同步; 多应用于CPU GPU之间管线.
 	// 使用该方法必须和绑定之间要有一帧的时间间隔.
 	bool DoWait(FWeakThreadHandle Handle);
+
+protected:
+	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
+	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
+
+private:
+	
+	// FsimpleDelegate型队列里注册一个代理.
+	template<typename UserClass, typename... VarTypes>
+	void AddRawToQueue(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		FScopeLock ScopeLock(&Mutex);
+		TaskQueue.Enqueue(FSimpleDelegate::CreateRaw(TargetClass, InMethod, Vars...));// 添加进队列.
+	};
+
+	// FsimpleDelegate型队列里注册一个代理.
+	template<typename UserClass, typename... VarTypes>
+	void AddUObjectToQueue(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		FScopeLock ScopeLock(&Mutex);
+		TaskQueue.Enqueue(FSimpleDelegate::CreateUObject(TargetClass, InMethod, Vars...));// 添加进队列.
+	};
+
+	// FsimpleDelegate型队列里注册一个代理.
+	template<typename UserClass, typename... VarTypes>
+	void AddUFunctionToQueue(UserClass* TargetClass, const FName& InMethod, VarTypes... Vars)
+	{
+		FScopeLock ScopeLock(&Mutex);
+		TaskQueue.Enqueue(FSimpleDelegate::CreateUFunction(TargetClass, InMethod, Vars...));// 添加进队列.
+	};
+
+	// FsimpleDelegate型队列里注册一个代理.
+	template<typename FunctorType, typename... VarTypes>
+	void AddLambdaToQueue(FunctorType&& InMethod, VarTypes... Vars)
+	{
+		FScopeLock ScopeLock(&Mutex);
+		TaskQueue.Enqueue(FSimpleDelegate::CreateLambda(InMethod, Vars...));// 添加进队列.
+	};
+
+	// FsimpleDelegate型队列里注册一个代理.
+	template<typename UserClass, typename... VarTypes>
+	void AddSPToQueue(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		FScopeLock ScopeLock(&Mutex);
+		TaskQueue.Enqueue(FSimpleDelegate::CreateSP(TargetClass, InMethod, Vars...));// 添加进队列.
+	};
+
+private:
+	// 清除所有线程.
+	void CleanAllThread();
+	// 清除单个线程.
+	void CleanThread(FWeakThreadHandle Handle);
 
 public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 
@@ -167,22 +228,57 @@ public:/// 从线程代理池里查空闲线程,然后仅用作绑定
 		return handle;
 	};
 
-protected:
-	/* 使用目标线程代理创建线程实例并注册线程池,最后返回1根弱句柄*/
-	FWeakThreadHandle UpdateThreadPool(TSharedPtr<IThreadProxy> ThreadProxy);
-
 public:/// 直接创建线程并执行绑定(当创建非挂起版本).
 	/** Create Raw. */
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		// 创建一个不被挂起的线程; 使用显式构造器,让线程创建的时候默认不挂起.
-		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+		if (Pool.Num() < CPUThreadNumber) {
+			// 创建一个不被挂起的线程; 使用显式构造器,让线程创建的时候默认不挂起.
+			TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
 
-		ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 这一步拿到IThreadProxy对象里的 简单委托,在此委托上 给待定的目标类对象 绑定C++函数
+			ThreadProxy->GetThreadDelegate().BindRaw(TargetClass, InMethod, Vars...);// 这一步拿到IThreadProxy对象里的 简单委托,在此委托上 给待定的目标类对象 绑定C++函数
 
-		return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个线程句柄,通过此句柄来查询当前线程的情况
+			return UpdateThreadPool(ThreadProxy);// 这里业务层拿到了1个线程句柄,通过此句柄来查询当前线程的情况
+		}
+		else {
+			AddRawToQueue(TargetClass, InMethod, Vars...)
+		}
+
+		return nullptr;
 	};
+
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle CreateUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
+	{
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+		ThreadProxy->GetThreadDelegate().BindUFunction(TargetClass, InMethodName, Vars...);
+		return UpdateThreadPool(ThreadProxy);
+	}
+
+	template<typename FunctorType, typename... VarTypes>
+	FWeakThreadHandle CreateLambda(FunctorType&& InMethod, VarTypes... Vars)
+	{
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+		ThreadProxy->GetThreadDelegate().BindLambda(InMethod, Vars...);
+		return UpdateThreadPool(ThreadProxy);
+	}
+
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle CreateSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+		ThreadProxy->GetThreadDelegate().BindSP(TargetClass, InMethod, Vars...);
+		return UpdateThreadPool(ThreadProxy);
+	}
+
+	template<typename UserClass, typename... VarTypes>
+	FWeakThreadHandle CreateUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+	{
+		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable(false));
+		ThreadProxy->GetThreadDelegate().BindUObject(TargetClass, InMethod, Vars...);
+		return UpdateThreadPool(ThreadProxy);
+	}
 
 public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	/* 泛型方法:
@@ -192,10 +288,7 @@ public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	 */
 
 	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateThreadRaw(
-		UserClass* TargetClass,
-		typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-		VarTypes... Vars)
+	FWeakThreadHandle CreateThreadRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable()); // 这一步实例化1个线程代理; new一个子类赋给基类.
 
@@ -205,10 +298,7 @@ public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	};
 
 	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateThreadUFunction(
-		UserClass* TargetClass,
-		const FName& InMethodName,
-		VarTypes... Vars)
+	FWeakThreadHandle CreateThreadUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindUFunction(TargetClass, InMethodName, Vars...);
@@ -216,8 +306,7 @@ public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	}
 
 	template<typename FunctorType, typename... VarTypes>
-	FWeakThreadHandle CreateThreadLambda(
-		FunctorType&& InMethod, VarTypes... Vars)
+	FWeakThreadHandle CreateThreadLambda(FunctorType&& InMethod, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindLambda(InMethod, Vars...);
@@ -225,9 +314,7 @@ public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	}
 
 	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateThreadSP(const TSharedRef<UserClass>& TargetClass,
-									 typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-									 VarTypes... Vars)
+	FWeakThreadHandle CreateThreadSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindSP(TargetClass, InMethod, Vars...);
@@ -235,21 +322,20 @@ public:/// 直接创建线程并执行绑定(当创建就挂起版本).
 	}
 
 	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateThreadUObject(UserClass* TargetClass,
-										  typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod,
-										  VarTypes... Vars)
+	FWeakThreadHandle CreateThreadUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());
 		ThreadProxy->GetThreadDelegate().BindUObject(TargetClass, InMethod, Vars...);
 		return UpdateThreadPool(ThreadProxy);
 	}
 
-// 	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
-// 	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
+	// 	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
+	// 	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
 
 private:
 	static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.
 	TArray<TSharedPtr<IThreadProxy>> Pool;// 线程池.
+	TQueue<FSimpleDelegate> TaskQueue;
 
 	FCriticalSection Mutex;// 作用域锁; 为了防止多个线程进行资源争夺.
 

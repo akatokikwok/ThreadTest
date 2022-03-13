@@ -18,10 +18,41 @@ void FThreadManagement::Destroy()
 	}
 }
 
+void FThreadManagement::Tick(float DeltaTime)
+{
+	FScopeLock ScopeLock(&Mutex);
+	TSharedPtr<IThreadProxy> ThreadProxy = nullptr;
+
+	for (auto& Tmp : Pool) {
+		if (Tmp->IsSuspend()) {
+			ThreadProxy = Tmp;
+			break;
+		}
+	}
+	// 进一步处理那些挂起的闲置线程.
+	if (ThreadProxy.IsValid()) {
+		// FSimpleDelegate队列非空.
+		if (!TaskQueue.IsEmpty()) {
+			// 取出队列尾部代理
+			FSimpleDelegate SimpleDelegate;
+			TaskQueue.Dequeue(SimpleDelegate);
+
+			ThreadProxy->GetThreadDelegate() = SimpleDelegate;// 尾部代理记录下来
+			ThreadProxy->WakeupThread();// 并唤醒线程.
+		}
+	}
+}
+
+TStatId FThreadManagement::GetStatId() const
+{
+
+	return TStatId();
+}
+
 void FThreadManagement::Init(int32 ThreadNum)
 {
 	for (int32 i = 0; i < ThreadNum; ++i) {
-// 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());// 使用的是默认构造器.
+		// 		TSharedPtr<IThreadProxy> ThreadProxy = MakeShareable(new FThreadRunnable());// 使用的是默认构造器.
 		UpdateThreadPool(MakeShareable(new FThreadRunnable()));
 	}
 }
