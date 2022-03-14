@@ -1,6 +1,7 @@
 ﻿#include "Runnable/ThreadRunnableProxy.h"
 #include "Windows/WindowsPlatformProcess.h"
 #include "HAL/RunnableThread.h"
+#include "SimpleThreadPlatform.h"
 
 int32 FThreadRunnable::ThreadCount = 0;
 

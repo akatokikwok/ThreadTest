@@ -1,5 +1,7 @@
 ﻿#include "Core/SimpleSemaphore.h"
 #include "Windows/WindowsPlatformProcess.h"
+#include "HAL/Event.h"
+#include "SimpleThreadPlatform.h"
 
 FSimpleSemaphore::FSimpleSemaphore()
 	:Event(FPlatformProcess::GetSynchEventFromPool())
