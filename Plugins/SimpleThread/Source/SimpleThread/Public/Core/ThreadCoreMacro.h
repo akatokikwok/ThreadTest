@@ -2,4 +2,4 @@
 /* 此头文件用来存放通用的一些宏                                            */
 /************************************************************************/
 
-#define MUTEX_LOCL FScopeLock ScopeLock(&Mutex)
+#define MUTEX_LOCL FScopeLock ScopeLock(&Mutex)// 作用域锁.

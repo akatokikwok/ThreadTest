@@ -7,6 +7,7 @@
 #include "Windows/WindowsCriticalSection.h"
 #include "Containers/Queue.h"
 #include "Tickable.h"
+#include "Core/SimpleThreadType.h"
 
 #if PLATFORM_WINDOWS
 #include <iostream>
@@ -17,12 +18,7 @@ using namespace std;
 #define CPUThreadNumber 12
 #endif
 
-enum class EThreadState
-{
-	LEISURELY,
-	WORKING,
-	ERROR
-};
+class EThreadState;
 
 /* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数
  * 该类线程安全.所有使用到线程池的操作均引入了作用域锁.

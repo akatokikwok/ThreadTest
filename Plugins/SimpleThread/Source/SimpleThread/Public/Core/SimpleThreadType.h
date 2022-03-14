@@ -32,5 +32,12 @@ protected:
 
 };
 
+enum class EThreadState
+{
+	LEISURELY,
+	WORKING,
+	ERROR
+};
+
 typedef TWeakPtr<FSimpleThreadHandle> FWeakThreadHandle; // 线程句柄,弱引用版本.
 typedef TFunction<void()> FThradLambda;// 一根函数指针, 用于线程的lambda
