@@ -2,12 +2,12 @@
 #include "CoreMinimal.h"
 #include "Interface/ThreadManageInterface.h"
 #include "../SimpleThreadType.h"
-class IThreadProxyContainer;
-class FWeakThreadHandle;
 
-/// 
+/// 关联线程池.
 class SIMPLETHREAD_API FThreadProxyManage : public IThreadProxyContainer
 {
+
+
 public:
 	~FThreadProxyManage();
 
@@ -62,10 +62,10 @@ public:
 
 public:
 	/************************************************************************/
-	/* 创建线程后立刻执行,无需等待,属于异步操作.    
+	/* 创建线程后立刻执行,无需等待,属于异步操作.
 	* 使用操作符重载.
 	/************************************************************************/
-	
+
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
@@ -102,3 +102,4 @@ public:
 	};
 
 };
+

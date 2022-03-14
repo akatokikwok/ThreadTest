@@ -25,6 +25,9 @@ class IThreadProxyContainer
 	: public TArray<TSharedPtr<IThreadProxy>>// 线程池.
 	, public IThreadContainer// 公共容器接口.
 {
+protected:
+	typedef TArray<TSharedPtr<IThreadProxy>> TProxyArray;
+
 public:
 	/** 操作符<<重载. 创建线程并注册到内存池. */
 	FWeakThreadHandle operator<<(const TSharedPtr<IThreadProxy>& ThreadProxy)
@@ -102,6 +105,10 @@ class IThreadTaskContainer
 	, public TArray<TSharedPtr<IThreadProxy>>// 线程池.
 	, public IThreadContainer// 公共容器接口.
 {
+protected:
+	typedef TArray<TSharedPtr<IThreadProxy>>	TProxyArray;
+	typedef TQueue<FSimpleDelegate>				TEventQueue;
+
 public:
 	/** 把外部任务存到任务队列. */
 	bool operator<<(const FSimpleDelegate& deleGate)
