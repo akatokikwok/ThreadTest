@@ -65,5 +65,5 @@ public:
 	{
 		return *this ^ FSimpleDelegate::BindUObject(TargetClass, InMethod, Vars...);
 	};
-
+	
 };
