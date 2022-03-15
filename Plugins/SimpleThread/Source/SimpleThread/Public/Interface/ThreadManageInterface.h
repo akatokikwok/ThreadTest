@@ -6,6 +6,7 @@
 #include "Runnable/ThreadRunnableProxy.h"
 #include "Core/SimpleThreadType.h"
 #include "Containers/Queue.h"
+#include "Abandonable/SimpleAbandonable.h"
 
 /// 本类用作IThreadProxyContainer的继承来源.
 class IThreadContainer
@@ -155,4 +156,30 @@ public:
 
 		return *this;
 	};
+};
+
+/// 本类仅继承自公共容器.
+class IAbandonableContainer : public IThreadContainer
+{
+
+protected:
+	/* 约定>>是异步操作. */
+	IAbandonableContainer& operator>>(const FSimpleDelegate& ThreadDelegate)
+	{
+		(new FAutoDeleteAsyncTask<FSimpleAbandonable>(ThreadDelegate))->StartBackgroundTask();// FAutoDeleteAsyncTask会自动负责delete.
+
+		return *this;
+	};
+
+	/* 约定<<是同步操作. 会阻塞主线程. */
+	IAbandonableContainer& operator<<(const FSimpleDelegate& ThreadDelegate)
+	{
+		FAsyncTask<FSimpleAbandonable>* SimpleAbandonable = new FAsyncTask<FSimpleAbandonable>(ThreadDelegate);
+		SimpleAbandonable->StartBackgroundTask();// 该同步任务后台执行.
+		SimpleAbandonable->EnsureCompletion();// 并阻塞主线程.
+		delete SimpleAbandonable;
+
+		return *this;
+	};
+
 };

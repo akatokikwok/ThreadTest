@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Async/AsyncWork.h"
 
+/// 派生自UE4内嵌FNonAbandonableTask
 struct SIMPLETHREAD_API FSimpleAbandonable : public FNonAbandonableTask
 {
 public:

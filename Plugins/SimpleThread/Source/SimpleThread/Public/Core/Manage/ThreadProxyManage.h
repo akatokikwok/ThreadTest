@@ -29,35 +29,35 @@ public:
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this << FSimpleDelegate::BindRaw(TargetClass, InMethod, Vars...);
+		return *this << FSimpleDelegate::CreateRaw(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
 	{
-		return *this << FSimpleDelegate::BindUFunction(TargetClass, InMethod, Vars...);
+		return *this << FSimpleDelegate::CreateUFunction(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename FunctorType, typename... VarTypes>
 	FWeakThreadHandle BindLambda(FunctorType&& InMethod, VarTypes... Vars)
 	{
-		return *this << FSimpleDelegate::BindLambda(InMethod, Vars...);
+		return *this << FSimpleDelegate::CreateLambda(InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this << FSimpleDelegate::BindSP(TargetClass, InMethod, Vars...);
+		return *this << FSimpleDelegate::CreateSP(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle BindUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this << FSimpleDelegate::BindUObject(TargetClass, InMethod, Vars...);
+		return *this << FSimpleDelegate::CreateUObject(TargetClass, InMethod, Vars...);
 	};
 
 public:
@@ -70,35 +70,35 @@ public:
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this ^ FSimpleDelegate::BindRaw(TargetClass, InMethod, Vars...);
+		return *this ^ FSimpleDelegate::CreateRaw(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
 	{
-		return *this ^ FSimpleDelegate::BindUFunction(TargetClass, InMethod, Vars...);
+		return *this ^ FSimpleDelegate::CreateUFunction(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename FunctorType, typename... VarTypes>
 	FWeakThreadHandle CreateLambda(FunctorType&& InMethod, VarTypes... Vars)
 	{
-		return *this ^ FSimpleDelegate::BindLambda(InMethod, Vars...);
+		return *this ^ FSimpleDelegate::CreateLambda(InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this ^ FSimpleDelegate::BindSP(TargetClass, InMethod, Vars...);
+		return *this ^ FSimpleDelegate::CreateSP(TargetClass, InMethod, Vars...);
 	};
 
 	//
 	template<typename UserClass, typename... VarTypes>
 	FWeakThreadHandle CreateUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
 	{
-		return *this ^ FSimpleDelegate::BindUObject(TargetClass, InMethod, Vars...);
+		return *this ^ FSimpleDelegate::CreateUObject(TargetClass, InMethod, Vars...);
 	};
 
 };
