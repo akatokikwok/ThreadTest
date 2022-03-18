@@ -10,6 +10,7 @@
 #include "Core/SimpleThreadType.h"
 #include "Core/Manage/ThreadProxyManage.h"
 #include "Core/Manage/ThreadTaskManage.h"
+#include "Core/Manage/ThreadAbandonableManage.h"
 
 namespace TM // "TM"意为Thread Manager.
 {
@@ -24,10 +25,25 @@ namespace TM // "TM"意为Thread Manager.
 		static TSharedRef<FThreadManagement> Get();// 单例模式:拿取本类引用
 		static void Destroy();// 单例模式:置空静态单例
 
+	public:
+		static FThreadProxyManage& GetProxy() { return Get()->ThreadProxyManage; }
+		static FThreadTaskManagement& GetTask() { return  Get()->ThreadTaskManagement; }
+		static FThreadAbandonablePManage& GetAbandonable() { return Get()->ThreadAbandonableManage; }
+	
+	private:
+		// Proxy是自定义线程创建, 用于简单地创建线程.
+		FThreadProxyManage ThreadProxyManage;
+		// Task是自定义的复杂线程池,含有任务队列, 可以往线程池里塞入任务队列,责令其执行.
+		FThreadTaskManagement ThreadTaskManagement;
+		// 这个比较特殊,是从UE4内建线程池里直接拿取线程.
+		FThreadAbandonablePManage ThreadAbandonableManage;
+
+	private:
+		static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.
+
 	private:
 		// 	virtual void Tick( float DeltaTime ) override;
 		// 	virtual TStatId GetStatId() const override;
-
 		// public:
 		// 	// 初始化一堆线程; 即new出一堆FThreadRunnable类实例.
 		// 	void Init(int32 ThreadNum);
@@ -321,24 +337,6 @@ namespace TM // "TM"意为Thread Manager.
 		// 
 		// 	// 	/* 同上面那几种模板函数, 只不过这次绑定的是lambda而非上面泛型的多参*/
 		// 	// 	FWeakThreadHandle CreatetThread(const FThradLambda& ThreadLambda);
-
-
-	private:
-		// 	TArray<TSharedPtr<IThreadProxy>> Pool;// 线程池.
-		// 	TQueue<FSimpleDelegate> TaskQueue;
-		// 	FCriticalSection Mutex;// 作用域锁; 为了防止多个线程进行资源争夺.
-
-	public:
-		FORCEINLINE FThreadProxyManage& GetProxy() { return ThreadProxyManage; }
-		FORCEINLINE FThreadTaskManagement& GetTask() { return ThreadTaskManagement; }
-
-	private:
-		FThreadProxyManage ThreadProxyManage;
-		FThreadTaskManagement ThreadTaskManagement;
-
-	private:
-		static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.
-
 	};
 };
 using namespace TM;

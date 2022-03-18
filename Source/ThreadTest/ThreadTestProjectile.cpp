@@ -3,6 +3,7 @@
 #include "ThreadTestProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 AThreadTestProjectile::AThreadTestProjectile() 
 {
@@ -37,7 +38,7 @@ void AThreadTestProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherAct
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr) && OtherComp->IsSimulatingPhysics())
 	{
 		OtherComp->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
-
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), mEmitter, GetActorLocation());
 		Destroy();
 	}
 }

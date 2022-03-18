@@ -6,11 +6,14 @@
 #include "Interface/ProxyInterface.h"
 #include "Delegates/Delegate.h"
 #include "Containers/Queue.h"
+#include "ManageBase/ThreadManageBase.h"
 class IThreadProxy;
 
 /// 关联线程池、任务队列
+/// Bind   意为添加进任务队列,若有闲置线程则直接执行该任务.
+/// Create 意为在先池子里查, 查到闲置线程再执行任务.没有闲置线程则会扔到任务队列里.
 class SIMPLETHREAD_API FThreadTaskManagement
-	: public IThreadTaskContainer
+	: public FThreadTemplate<IThreadTaskContainer>
 	, public FTickableGameObject
 {
 public:
@@ -31,39 +34,39 @@ public:
 	 * 使用操作符重载.
 	/************************************************************************/
 
-	//
-	template<typename UserClass, typename... VarTypes>
-	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
-	{
-		return *this ^ FSimpleDelegate::CreateRaw(TargetClass, InMethod, Vars...);
-	};
-
-	//
-	template<typename UserClass, typename... VarTypes>
-	void CreateUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
-	{
-		return *this ^ FSimpleDelegate::CreateUFunction(TargetClass, InMethod, Vars...);
-	};
-
-	//
-	template<typename FunctorType, typename... VarTypes>
-	void CreateLambda(FunctorType&& InMethod, VarTypes... Vars)
-	{
-		return *this ^ FSimpleDelegate::CreateLambda(InMethod, Vars...);
-	};
-
-	//
-	template<typename UserClass, typename... VarTypes>
-	void CreateSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
-	{
-		return *this ^ FSimpleDelegate::CreateSP(TargetClass, InMethod, Vars...);
-	};
-
-	//
-	template<typename UserClass, typename... VarTypes>
-	void CreateUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
-	{
-		return *this ^ FSimpleDelegate::CreateUObject(TargetClass, InMethod, Vars...);
-	};
+// 	//
+// 	template<typename UserClass, typename... VarTypes>
+// 	FWeakThreadHandle CreateRaw(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+// 	{
+// 		return *this ^ FSimpleDelegate::CreateRaw(TargetClass, InMethod, Vars...);
+// 	};
+// 
+// 	//
+// 	template<typename UserClass, typename... VarTypes>
+// 	void CreateUFunction(UserClass* TargetClass, const FName& InMethodName, VarTypes... Vars)
+// 	{
+// 		return *this ^ FSimpleDelegate::CreateUFunction(TargetClass, InMethod, Vars...);
+// 	};
+// 
+// 	//
+// 	template<typename FunctorType, typename... VarTypes>
+// 	void CreateLambda(FunctorType&& InMethod, VarTypes... Vars)
+// 	{
+// 		return *this ^ FSimpleDelegate::CreateLambda(InMethod, Vars...);
+// 	};
+// 
+// 	//
+// 	template<typename UserClass, typename... VarTypes>
+// 	void CreateSP(const TSharedRef<UserClass>& TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+// 	{
+// 		return *this ^ FSimpleDelegate::CreateSP(TargetClass, InMethod, Vars...);
+// 	};
+// 
+// 	//
+// 	template<typename UserClass, typename... VarTypes>
+// 	void CreateUObject(UserClass* TargetClass, typename TMemFunPtrType<false, UserClass, void(VarTypes...)>::Type InMethod, VarTypes... Vars)
+// 	{
+// 		return *this ^ FSimpleDelegate::CreateUObject(TargetClass, InMethod, Vars...);
+// 	};
 	
 };	

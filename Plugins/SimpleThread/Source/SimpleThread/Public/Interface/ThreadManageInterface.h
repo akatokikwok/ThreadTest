@@ -31,24 +31,24 @@ protected:
 
 public:
 	/** 操作符<<重载. 创建线程并注册到内存池. */
-	FWeakThreadHandle operator<<(const TSharedPtr<IThreadProxy>& ThreadProxy)
+	IThreadProxyContainer& operator<<(const TSharedPtr<IThreadProxy>& ThreadProxy)
 	{
 		MUTEX_LOCL;// 使用作用域锁.
 		ThreadProxy->CreateSafeThread();// 利用线程代理创建1个线程.
 		this->Add(ThreadProxy);// 线程代理注册到本尊类里.
 
-		return ThreadProxy->GetThreadHandle();//返回线程代理里的弱句柄.
+		return *this;
 	};
 
-	/** 操作符^重载. 找闲置线程并new一个. 挂起版*/
-	FWeakThreadHandle operator^(const FSimpleDelegate& Delegate)
+	/** 异步, 操作符>>重载. 需要一个外部任务, 找闲置线程并new一个. 不挂起版*/
+	FWeakThreadHandle operator>>(const FSimpleDelegate& delegate_Task)
 	{
-		FWeakThreadHandle ThreadHandle = nullptr;
+		FWeakThreadHandle ThreadHandle = nullptr;// 声明1个闲置且没有绑代理任务的线程句柄.
 		{
 			MUTEX_LOCL;
-			for (auto& Tmp : *this) {// 遍历线程池.找闲置线程.
-				if (Tmp->IsSuspend()) {
-					Tmp->GetThreadDelegate() = Delegate;// 设置闲置线程的代理.
+			for (auto& Tmp : *this) {// 遍历线程池.找闲置线程.且没有绑定任务的线程.
+				if (Tmp->IsSuspend() && !Tmp->GetThreadDelegate().IsBound()) {
+					Tmp->GetThreadDelegate() = delegate_Task;// 确认了没有绑定任务,才真正的为此线程绑定任务.
 					ThreadHandle = Tmp->GetThreadHandle();// 找到了符合的线程并保存他的句柄.
 					break;
 				}
@@ -56,21 +56,22 @@ public:
 		}// 离开作用域才会解锁.
 
 		if (!ThreadHandle.IsValid()) {
-			ThreadHandle = *this << MakeShareable(new FThreadRunnable(true));
+			/* !!!支持链式编程; 先重载<<, 做<<的逻辑, 再重载>> 把入参的代理任务加到线程里.*/
+			ThreadHandle = ( *this << MakeShareable(new FThreadRunnable(true)) ) >> delegate_Task;
 		}
 
 		return ThreadHandle;
 	};
 
-	/**  操作符<<重载. 找闲置线程并new一个. 不挂起版*/
-	FWeakThreadHandle operator<<(const FSimpleDelegate& Delegate)
+	/**  同步, 操作符<<重载. 找闲置线程并new一个. 挂起版*/
+	FWeakThreadHandle operator<<(const FSimpleDelegate& delegate_Task)
 	{
 		FWeakThreadHandle ThreadHandle = nullptr;
 		{
 			MUTEX_LOCL;
-			for (auto& Tmp : *this) {
-				if (Tmp->IsSuspend()) {
-					Tmp->GetThreadDelegate() = Delegate;// 设置闲置线程的代理.
+			for (auto& Tmp : *this) {// 遍历线程池.找闲置线程.且没有绑定任务的线程.
+				if (Tmp->IsSuspend() && !Tmp->GetThreadDelegate().IsBound()) {
+					Tmp->GetThreadDelegate() = delegate_Task;
 					ThreadHandle = Tmp->GetThreadHandle();// 找到了符合的线程并保存他的句柄.
 					break;
 				}
@@ -78,7 +79,7 @@ public:
 		}// 离开作用域才会解锁.
 
 		if (!ThreadHandle.IsValid()) {
-			ThreadHandle = *this << MakeShareable(new FThreadRunnable(false));
+			ThreadHandle = *this << MakeShareable(new FThreadRunnable(false)) << delegate_Task;
 		}
 
 		return ThreadHandle;
@@ -112,14 +113,14 @@ protected:
 
 public:
 	/** 把外部任务存到任务队列. */
-	bool operator<<(const FSimpleDelegate& deleGate)
+	void operator<<(const FSimpleDelegate& deleGate)
 	{
 		MUTEX_LOCL;
-		return this->Enqueue(deleGate);// 检查是否添加到队列成功.
+		this->Enqueue(deleGate);// 检查是否添加到队列成功.
 	};
 
 	/** 从队列里取一个任务并将其从尾部移除. */
-	bool operator>>(FSimpleDelegate& deleGate)
+	bool operator<<=(FSimpleDelegate& deleGate)
 	{
 		MUTEX_LOCL;
 		return this->Dequeue(deleGate);
@@ -134,13 +135,13 @@ public:
 	};
 
 	/** 查询闲置线程,若未找到则将外部任务注入任务队列. 支持链式编程. */
-	IThreadTaskContainer& operator^(const FSimpleDelegate& deleGate)
+	void operator>>(const FSimpleDelegate& deleGate)
 	{
 		bool bSuccessful = false;
 		{
 			MUTEX_LOCL;
 			for (auto& Tmp : *this) {
-				if (Tmp->IsSuspend()) {
+				if (Tmp->IsSuspend() && !Tmp->GetThreadDelegate().IsBound()) {
 					Tmp->GetThreadDelegate() = deleGate;// 获取该闲置线程任务.
 					Tmp->WakeupThread();// 唤醒该闲置线程.
 
@@ -153,8 +154,6 @@ public:
 		if (!bSuccessful) {
 			*this << deleGate;
 		}
-
-		return *this;
 	};
 };
 
@@ -164,22 +163,18 @@ class IAbandonableContainer : public IThreadContainer
 
 protected:
 	/* 约定>>是异步操作. */
-	IAbandonableContainer& operator>>(const FSimpleDelegate& ThreadDelegate)
+	void operator>>(const FSimpleDelegate& ThreadDelegate)
 	{
 		(new FAutoDeleteAsyncTask<FSimpleAbandonable>(ThreadDelegate))->StartBackgroundTask();// FAutoDeleteAsyncTask会自动负责delete.
-
-		return *this;
 	};
 
 	/* 约定<<是同步操作. 会阻塞主线程. */
-	IAbandonableContainer& operator<<(const FSimpleDelegate& ThreadDelegate)
+	void operator<<(const FSimpleDelegate& ThreadDelegate)
 	{
 		FAsyncTask<FSimpleAbandonable>* SimpleAbandonable = new FAsyncTask<FSimpleAbandonable>(ThreadDelegate);
 		SimpleAbandonable->StartBackgroundTask();// 该同步任务后台执行.
 		SimpleAbandonable->EnsureCompletion();// 并阻塞主线程.
 		delete SimpleAbandonable;
-
-		return *this;
 	};
 
 };

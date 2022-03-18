@@ -103,7 +103,7 @@ void FThreadTaskManagement::Tick(float DeltaTime)
 	if (ThreadProxy.IsValid()) {// 确实有闲置线程.
 		if (! ( (TEventQueue*)this )->IsEmpty()) {// 检查任务队列不为空
 			FSimpleDelegate SimpleDelegate;
-			if (*this >> SimpleDelegate) // 任务队列队尾弹出一个任务.
+			if (*this <<= SimpleDelegate) // 任务队列队尾弹出一个任务.
 			{
 				MUTEX_LOCL;
 				ThreadProxy->GetThreadDelegate() = SimpleDelegate;// 刷新闲置线程的任务为 任务队列的那个任务.
