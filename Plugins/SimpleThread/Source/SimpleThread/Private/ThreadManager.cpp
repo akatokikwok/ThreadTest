@@ -1,12 +1,14 @@
 ﻿#include "ThreadManager.h"
 #include "Interface/ThreadManageInterface.h"
+#include "Core/Manage/CoroutinesManage.h"
+#include "Core/Manage/ThreadTaskManage.h"
 
 TSharedPtr<FThreadManagement> FThreadManagement::ThreadManagement = nullptr;
 
 TSharedRef<FThreadManagement> FThreadManagement::Get()
 {
 	if (!ThreadManagement.IsValid()) {// 如果智能指针为空,就给他创建1个
-		ThreadManagement = MakeShareable(new FThreadManagement());
+		ThreadManagement = MakeShareable(new FThreadManagement);
 	}
 	return ThreadManagement.ToSharedRef();
 }
@@ -17,6 +19,19 @@ void FThreadManagement::Destroy()
 		//ThreadManagement->CleanAllThread();
 		ThreadManagement = nullptr;
 	}
+}
+
+void FThreadManagement::Tick(float DeltaTime)
+{
+	// 先Tick线程任务.
+	ThreadTaskManagement.Tick(DeltaTime);
+	// 再Tick协程.
+	CoroutinesManage.Tick(DeltaTime);
+}
+
+TStatId FThreadManagement::GetStatId() const
+{
+	return TStatId();
 }
 
 #pragma region ThreadProxyManage.
@@ -113,12 +128,22 @@ void FThreadTaskManagement::Tick(float DeltaTime)
 	}
 }
 
-TStatId FThreadTaskManagement::GetStatId() const
-{
-	return TStatId();
-}
+// TStatId FThreadTaskManagement::GetStatId() const
+// {
+// 	return TStatId();
+// }
 #pragma endregion ThreadTaskManage.
 
+FCoroutinesManage::FCoroutinesManage()
+	: FThreadTemplateBase<ICoroutinesContainer, FCoroutinesHandle>()
+{
+
+}
+
+void FCoroutinesManage::Tick(float DeltaTime)
+{
+	*this <<= DeltaTime;
+}
 
 
 // void FThreadManagement::Tick(float DeltaTime)
@@ -145,13 +170,11 @@ TStatId FThreadTaskManagement::GetStatId() const
 // 		}
 // 	}
 // }
-
 // TStatId FThreadManagement::GetStatId() const
 // {
 // 
 // 	return TStatId();
 // }
-
 // void FThreadManagement::Init(int32 ThreadNum)
 // {
 // 	for (int32 i = 0; i < ThreadNum; ++i) {

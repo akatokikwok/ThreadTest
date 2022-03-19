@@ -3,7 +3,7 @@
 #include "Interface/ThreadManageInterface.h"
 #include "ManageBase/ThreadManageBase.h"
 
-/// 通过模板匹配来封装AbandonablePManage.
+/// 线程Abandonable管理类.
 /// Bind  前缀的函数: << 同步绑定, 会阻塞"启动线程", 完成任务后才允许激活"启动线程".
 /// Create前缀的函数: >> 异步绑定, 直接启动, 任务完成后自动销毁.
 struct SIMPLETHREAD_API FThreadAbandonablePManage : public FThreadTemplate<IAbandonableContainer>

@@ -7,8 +7,9 @@
 #include "Core/SimpleThreadType.h"
 #include "Containers/Queue.h"
 #include "Abandonable/SimpleAbandonable.h"
+#include "Coroutines/SimpleCoroutines.h"
 
-/// 本类用作IThreadProxyContainer的继承来源.
+/// 带锁的线程容器接口.
 class IThreadContainer
 {
 public:
@@ -57,7 +58,7 @@ public:
 
 		if (!ThreadHandle.IsValid()) {
 			/* !!!支持链式编程; 先重载<<, 做<<的逻辑, 再重载>> 把入参的代理任务加到线程里.*/
-			ThreadHandle = ( *this << MakeShareable(new FThreadRunnable(true)) ) >> delegate_Task;
+			ThreadHandle = (*this << MakeShareable(new FThreadRunnable(true))) >> delegate_Task;
 		}
 
 		return ThreadHandle;
@@ -178,3 +179,58 @@ protected:
 	};
 
 };
+
+/// 不带锁的协程管理接口.
+class ICoroutinesContainer
+{
+public:
+	ICoroutinesContainer() : mTmpTotalTime(0.f) {}
+	virtual ~ICoroutinesContainer() { ICoroutinesObject::mArray.Empty(); }// 析构的时候释放协程接口里的数组.
+
+	//
+	ICoroutinesContainer& operator<<(float TotalTime)
+	{
+		mTmpTotalTime = TotalTime;
+		return *this;
+	}
+
+	//
+	ICoroutinesContainer& operator<<(const FSimpleDelegate& InDelegate)
+	{
+		ICoroutinesObject::mArray.Add(
+			MakeShareable(new FCoroutinesObject(mTmpTotalTime, InDelegate))
+		);// 协程接口里数据集注册一个协程对象.
+
+		return *this;
+	}
+
+	// 返回一个协程弱句柄
+	FCoroutinesHandle operator>>(const FSimpleDelegate& InDelegate)
+	{
+		ICoroutinesObject::mArray.Add(MakeShareable(new FCoroutinesObject(InDelegate)));
+
+		return ICoroutinesObject::mArray[ICoroutinesObject::mArray.Num() - 1];
+	}
+
+	// 供Tick用的操作符. 更新请求并在数据集里删除已完成的请求.
+	void operator<<=(float Time)
+	{
+		TArray<TSharedPtr<ICoroutinesObject>> RemoveObjects;// 已完成了的请求集合.
+		for (int32 i = 0; i < ICoroutinesObject::mArray.Num(); ++i) {
+			FCoroutinesRequest Request(Time);// 申请1个请求.
+			ICoroutinesObject::mArray[i]->Update(Request);// 再把请求发送到update函数里去更新.
+			if (Request.bCompleteRequest == true) {
+				RemoveObjects.Add(ICoroutinesObject::mArray[i]);// 请求完成了就被载入废弃数组.
+			}
+		}
+
+		for (auto& Ins : RemoveObjects){
+			ICoroutinesObject::mArray.Remove(Ins);
+		}
+	}
+
+private:
+	float mTmpTotalTime;
+
+};
+

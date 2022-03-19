@@ -11,32 +11,41 @@
 #include "Core/Manage/ThreadProxyManage.h"
 #include "Core/Manage/ThreadTaskManage.h"
 #include "Core/Manage/ThreadAbandonableManage.h"
+#include "Core/Manage/CoroutinesManage.h"
 
 namespace TM // "TM"意为Thread Manager.
 {
 	/* 线程管理类, 主要负责维护线程池和 对指定线程代理的一些绑定函数
 	* 该类线程安全.所有使用到线程池的操作均引入了作用域锁.
 	*/
-	class SIMPLETHREAD_API FThreadManagement
-		: public TSharedFromThis<FThreadManagement>
-// 		, public FTickableGameObject// 需要多继承自FTickableGameObject,方便监视.
+	class SIMPLETHREAD_API FThreadManagement : public TSharedFromThis<FThreadManagement>
+		, public FTickableGameObject// 需要多继承自FTickableGameObject,方便监视.
 	{
 	public:
 		static TSharedRef<FThreadManagement> Get();// 单例模式:拿取本类引用
 		static void Destroy();// 单例模式:置空静态单例
 
+	private:/// Override自FTickableGameObject.
+
+		virtual void Tick(float DeltaTime);
+		virtual TStatId GetStatId() const;
+
 	public:
 		static FThreadProxyManage& GetProxy() { return Get()->ThreadProxyManage; }
 		static FThreadTaskManagement& GetTask() { return  Get()->ThreadTaskManagement; }
 		static FThreadAbandonablePManage& GetAbandonable() { return Get()->ThreadAbandonableManage; }
+		static FCoroutinesManage& GetCoroutines() { return Get()->CoroutinesManage; }
+
+	private:/// 4大管理类.
 	
-	private:
 		// Proxy是自定义线程创建, 用于简单地创建线程.
 		FThreadProxyManage ThreadProxyManage;
 		// Task是自定义的复杂线程池,含有任务队列, 可以往线程池里塞入任务队列,责令其执行.
 		FThreadTaskManagement ThreadTaskManagement;
 		// 这个比较特殊,是从UE4内建线程池里直接拿取线程.
 		FThreadAbandonablePManage ThreadAbandonableManage;
+		// 协程管理.
+		FCoroutinesManage CoroutinesManage;
 
 	private:
 		static TSharedPtr<FThreadManagement> ThreadManagement;// 静态单例指针.

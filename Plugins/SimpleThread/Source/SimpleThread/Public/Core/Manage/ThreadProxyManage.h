@@ -4,7 +4,7 @@
 #include "../SimpleThreadType.h"
 #include "ManageBase/ThreadManageBase.h"
 
-/// 关联线程池.
+/// 线程Proxy代理类.
 /// Bind	创建线程且绑定对应任务,但默认不执行, 转而借助Join,Detach来决定异步还是同步执行.
 /// Create	创建线程且直接执行任务,是最快捷的异步方式.
 class SIMPLETHREAD_API FThreadProxyManage : public FThreadTemplate<IThreadProxyContainer, FWeakThreadHandle>

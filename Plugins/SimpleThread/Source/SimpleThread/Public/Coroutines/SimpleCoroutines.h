@@ -29,6 +29,7 @@ public:
 	//
 	FORCEINLINE void Awaken() { bAwaken = true; }
 protected:
+	// 更新请求.
 	virtual void Update(FCoroutinesRequest& CoroutinesRequest) = 0;
 
 protected:
@@ -47,6 +48,7 @@ public:
 	FCoroutinesObject(float InTotalTime, const FSimpleDelegate& InSimpleDelegate);
 
 protected:
+	// 更新请求.
 	virtual void Update(FCoroutinesRequest& CoroutinesRequest) final;
 
 protected:

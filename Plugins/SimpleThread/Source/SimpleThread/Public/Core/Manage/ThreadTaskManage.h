@@ -2,19 +2,15 @@
 #include "CoreMinimal.h"
 #include "Interface/ThreadManageInterface.h"
 #include "../SimpleThreadType.h"
-#include "Tickable.h"
 #include "Interface/ProxyInterface.h"
 #include "Delegates/Delegate.h"
 #include "Containers/Queue.h"
 #include "ManageBase/ThreadManageBase.h"
-class IThreadProxy;
 
-/// 关联线程池、任务队列
+/// 线程任务管理类.
 /// Bind   意为添加进任务队列,若有闲置线程则直接执行该任务.
 /// Create 意为在先池子里查, 查到闲置线程再执行任务.没有闲置线程则会扔到任务队列里.
-class SIMPLETHREAD_API FThreadTaskManagement
-	: public FThreadTemplate<IThreadTaskContainer>
-	, public FTickableGameObject
+class SIMPLETHREAD_API FThreadTaskManagement : public FThreadTemplate<IThreadTaskContainer>
 {
 public:
 	FThreadTaskManagement();
@@ -23,10 +19,8 @@ public:
 	// 初始化一些线程; 这些线程数量都是固定的,若你想创建自己的,则推荐使用FThreadProxyManage类
 	void Init(int32 ThreadNum);
 
-private:/// 重写父函数.
-
-	virtual void Tick(float DeltaTime) override;// Tick发生在主线程.
-	virtual TStatId GetStatId() const override;
+	// Tick线程任务.
+	void Tick(float DeltaTime);
 
 public:
 	/************************************************************************/
